@@ -2,6 +2,9 @@ package main
 
 import (
 	"fmt"
+	"math/rand"
+	"sync"
+	"time"
 )
 
 const (
@@ -9,32 +12,89 @@ const (
 	CHUNKS = 8
 )
 
-// generateRandomElements generates random elements.
 func generateRandomElements(size int) []int {
-	// ваш код здесь
+	if size <= 0 {
+		return []int{}
+	}
+
+	data := make([]int, size)
+
+	for index := range data {
+		data[index] = rand.Intn(1_000_000) + 1
+	}
+
+	return data
 }
 
-// maximum returns the maximum number of elements.
 func maximum(data []int) int {
-	// ваш код здесь
+	if len(data) == 0 {
+		return 0
+	}
+
+	result := data[0]
+
+	for _, value := range data[1:] {
+		if value > result {
+			result = value
+		}
+	}
+
+	return result
 }
 
-// maxChunks returns the maximum number of elements in a chunks.
 func maxChunks(data []int) int {
-	// ваш код здесь
+	if len(data) == 0 {
+		return 0
+	}
+
+	maxi := make([]int, CHUNKS)
+	chunkSize := len(data) / CHUNKS
+
+	var workers sync.WaitGroup
+	workers.Add(CHUNKS)
+
+	for index := 0; index < CHUNKS; index++ {
+		start := index * chunkSize
+		end := start + chunkSize
+
+		if index == CHUNKS-1 {
+			end = len(data)
+		}
+
+		go func(chunk []int, resultIndex int) {
+			defer workers.Done()
+
+			if len(chunk) == 0 {
+				maxi[resultIndex] = data[0]
+				return
+			}
+
+			maxi[resultIndex] = maximum(chunk)
+		}(data[start:end], index)
+	}
+
+	workers.Wait()
+
+	return maximum(maxi)
 }
 
 func main() {
 	fmt.Printf("Генерируем %d целых чисел", SIZE)
-	// ваш код здесь
+	data := generateRandomElements(SIZE)
 
 	fmt.Println("Ищем максимальное значение в один поток")
-	// ваш код здесь
+
+	start := time.Now()
+	max := maximum(data)
+	elapsed := time.Since(start).Microseconds()
 
 	fmt.Printf("Максимальное значение элемента: %d\nВремя поиска: %d ms\n", max, elapsed)
 
 	fmt.Printf("Ищем максимальное значение в %d потоков", CHUNKS)
-	// ваш код здесь
+
+	start = time.Now()
+	max = maxChunks(data)
+	elapsed = time.Since(start).Microseconds()
 
 	fmt.Printf("Максимальное значение элемента: %d\nВремя поиска: %d ms\n", max, elapsed)
 }
